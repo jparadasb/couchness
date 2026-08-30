@@ -1,0 +1,130 @@
+package telegram
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+)
+
+const apiBaseURL = "https://api.telegram.org"
+
+type apiClient struct {
+	token      string
+	baseURL    string
+	httpClient *http.Client
+}
+
+type apiResponse struct {
+	OK          bool            `json:"ok"`
+	Description string          `json:"description"`
+	Result      json.RawMessage `json:"result"`
+}
+
+type Update struct {
+	UpdateID int64    `json:"update_id"`
+	Message  *Message `json:"message"`
+}
+
+type Message struct {
+	Text string `json:"text"`
+	From User   `json:"from"`
+	Chat Chat   `json:"chat"`
+}
+
+type User struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+}
+
+type Chat struct {
+	ID   int64  `json:"id"`
+	Type string `json:"type"`
+}
+
+type botIdentity struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+}
+
+func newAPIClient(token string) *apiClient {
+	return &apiClient{
+		token:   token,
+		baseURL: apiBaseURL,
+		httpClient: &http.Client{
+			Timeout: 45 * time.Second,
+		},
+	}
+}
+
+func (client *apiClient) call(ctx context.Context, method string, values url.Values, result interface{}) error {
+	endpoint := fmt.Sprintf("%s/bot%s/%s", client.baseURL, client.token, method)
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(values.Encode()))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	payload := &apiResponse{}
+	if err := json.NewDecoder(response.Body).Decode(payload); err != nil {
+		return err
+	}
+	if !payload.OK {
+		return fmt.Errorf("Telegram API error: %s", payload.Description)
+	}
+	if result != nil {
+		return json.Unmarshal(payload.Result, result)
+	}
+	return nil
+}
+
+func (client *apiClient) getMe(ctx context.Context) (*botIdentity, error) {
+	identity := &botIdentity{}
+	err := client.call(ctx, "getMe", url.Values{}, identity)
+	return identity, err
+}
+
+func (client *apiClient) getUpdates(ctx context.Context, offset int64) ([]Update, error) {
+	values := url.Values{
+		"offset":          {strconv.FormatInt(offset, 10)},
+		"timeout":         {"30"},
+		"allowed_updates": {`["message"]`},
+	}
+	updates := []Update{}
+	err := client.call(ctx, "getUpdates", values, &updates)
+	return updates, err
+}
+
+func (client *apiClient) deleteWebhook(ctx context.Context) error {
+	return client.call(ctx, "deleteWebhook", url.Values{}, nil)
+}
+
+func (client *apiClient) sendMessage(ctx context.Context, chatID int64, message string) error {
+	runes := []rune(message)
+	for len(runes) > 0 {
+		length := len(runes)
+		if length > 4000 {
+			length = 4000
+		}
+		part := string(runes[:length])
+		runes = runes[length:]
+		values := url.Values{
+			"chat_id": {strconv.FormatInt(chatID, 10)},
+			"text":    {part},
+		}
+		if err := client.call(ctx, "sendMessage", values, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}

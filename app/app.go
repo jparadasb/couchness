@@ -18,5 +18,6 @@ var Commands []*cli.Command = []*cli.Command{
 	AddShowsDirectory(),
 	DownloadEpisode(),
 	DisableShow(),
+	Telegram(),
 	movies.Movies(),
 }
