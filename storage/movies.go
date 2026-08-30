@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/highercomve/couchness/models"
 )
@@ -29,6 +30,9 @@ func (m *MovieStorage) Save() (*MovieStorage, error) {
 func GetAllMovies() ([]*models.Movie, error) {
 	records, err := Db.Driver.ReadAll(Db.Collections.Movies)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return []*models.Movie{}, nil
+		}
 		return nil, err
 	}
 	movies := []*models.Movie{}
