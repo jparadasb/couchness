@@ -88,6 +88,7 @@ Authorized bot commands:
 ```text
 /shows
 /show <show_id>
+/add_show <title>
 /update <show_id>
 /download <show_id>
 /update_all
@@ -97,6 +98,8 @@ Authorized bot commands:
 ```
 
 Owners and admins can create single-use invite links from the bot. Invites expire after 10 minutes. Only owners can invite or revoke admins; owner accounts are managed through the CLI. The bot accepts commands only in private chats.
+
+`/add_show` provides a guided setup with OMDb search-result buttons, follow-mode and resolution choices, confirmation, and optional immediate download. Owners and admins may use it. Send `/cancel` at any time to close an active setup.
 
 For a combined Couchness and Transmission deployment, copy `deploy/telegram/couchness.env.example`, fill its values, and run:
 
