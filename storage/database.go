@@ -59,6 +59,9 @@ func Init(configDir string) error {
 		TransmissionHost: os.Getenv("COUCHNESS_TRANSMISSION_HOST"),
 		TransmissionPort: os.Getenv("COUCHNESS_TRANSMISSION_PORT"),
 	})
+	if err == nil {
+		applyEnvironmentOverrides(AppConfiguration)
+	}
 	return err
 }
 
