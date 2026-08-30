@@ -98,6 +98,12 @@ Authorized bot commands:
 
 Owners and admins can create single-use invite links from the bot. Invites expire after 10 minutes. Only owners can invite or revoke admins; owner accounts are managed through the CLI. The bot accepts commands only in private chats.
 
+For a combined Couchness and Transmission deployment, copy `deploy/telegram/couchness.env.example`, fill its values, and run:
+
+```bash
+docker compose --env-file couchness.env -f deploy/telegram/compose.yaml up -d --build
+```
+
 ### Help
 
 ```bash
