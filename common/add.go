@@ -22,6 +22,9 @@ func Add(show *models.Show) (*models.Show, error) {
 		return show, err
 	}
 	err = storage.Db.Driver.Write(storage.Db.Collections.Shows, show.ID, show)
+	if err == nil {
+		err = storage.UnignoreShow(show.ID, show.Directory)
+	}
 	return show, err
 }
 
