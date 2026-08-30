@@ -3,6 +3,7 @@ package common
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/gosimple/slug"
@@ -13,6 +14,9 @@ import (
 
 // Add add new show to database
 func Add(show *models.Show) (*models.Show, error) {
+	if err := os.MkdirAll(show.Directory, 0755); err != nil {
+		return show, err
+	}
 	show, err := ScanShowDir(show.Directory, show)
 	if err != nil {
 		return show, err

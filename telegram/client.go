@@ -26,14 +26,16 @@ type apiResponse struct {
 }
 
 type Update struct {
-	UpdateID int64    `json:"update_id"`
-	Message  *Message `json:"message"`
+	UpdateID      int64          `json:"update_id"`
+	Message       *Message       `json:"message"`
+	CallbackQuery *CallbackQuery `json:"callback_query"`
 }
 
 type Message struct {
-	Text string `json:"text"`
-	From User   `json:"from"`
-	Chat Chat   `json:"chat"`
+	MessageID int64  `json:"message_id"`
+	Text      string `json:"text"`
+	From      User   `json:"from"`
+	Chat      Chat   `json:"chat"`
 }
 
 type User struct {
@@ -44,6 +46,27 @@ type User struct {
 type Chat struct {
 	ID   int64  `json:"id"`
 	Type string `json:"type"`
+}
+
+type CallbackQuery struct {
+	ID      string   `json:"id"`
+	From    User     `json:"from"`
+	Message *Message `json:"message"`
+	Data    string   `json:"data"`
+}
+
+type InlineKeyboardMarkup struct {
+	InlineKeyboard [][]InlineKeyboardButton `json:"inline_keyboard"`
+}
+
+type InlineKeyboardButton struct {
+	Text         string `json:"text"`
+	CallbackData string `json:"callback_data"`
+}
+
+type BotCommand struct {
+	Command     string `json:"command"`
+	Description string `json:"description"`
 }
 
 type botIdentity struct {
@@ -98,7 +121,7 @@ func (client *apiClient) getUpdates(ctx context.Context, offset int64) ([]Update
 	values := url.Values{
 		"offset":          {strconv.FormatInt(offset, 10)},
 		"timeout":         {"30"},
-		"allowed_updates": {`["message"]`},
+		"allowed_updates": {`["message","callback_query"]`},
 	}
 	updates := []Update{}
 	err := client.call(ctx, "getUpdates", values, &updates)
@@ -107,6 +130,22 @@ func (client *apiClient) getUpdates(ctx context.Context, offset int64) ([]Update
 
 func (client *apiClient) deleteWebhook(ctx context.Context) error {
 	return client.call(ctx, "deleteWebhook", url.Values{}, nil)
+}
+
+func (client *apiClient) setCommands(ctx context.Context, commands []BotCommand) error {
+	encoded, err := json.Marshal(commands)
+	if err != nil {
+		return err
+	}
+	return client.call(ctx, "setMyCommands", url.Values{"commands": {string(encoded)}}, nil)
+}
+
+func (client *apiClient) sendChatAction(ctx context.Context, chatID int64, action string) error {
+	values := url.Values{
+		"chat_id": {strconv.FormatInt(chatID, 10)},
+		"action":  {action},
+	}
+	return client.call(ctx, "sendChatAction", values, nil)
 }
 
 func (client *apiClient) sendMessage(ctx context.Context, chatID int64, message string) error {
@@ -127,4 +166,51 @@ func (client *apiClient) sendMessage(ctx context.Context, chatID int64, message 
 		}
 	}
 	return nil
+}
+
+func (client *apiClient) sendMessageWithKeyboard(ctx context.Context, chatID int64, message string, keyboard InlineKeyboardMarkup) (*Message, error) {
+	normalizeKeyboard(&keyboard)
+	markup, err := json.Marshal(keyboard)
+	if err != nil {
+		return nil, err
+	}
+	values := url.Values{
+		"chat_id":      {strconv.FormatInt(chatID, 10)},
+		"text":         {message},
+		"reply_markup": {string(markup)},
+	}
+	result := &Message{}
+	if err := client.call(ctx, "sendMessage", values, result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (client *apiClient) editMessage(ctx context.Context, chatID, messageID int64, message string, keyboard InlineKeyboardMarkup) error {
+	normalizeKeyboard(&keyboard)
+	markup, err := json.Marshal(keyboard)
+	if err != nil {
+		return err
+	}
+	values := url.Values{
+		"chat_id":      {strconv.FormatInt(chatID, 10)},
+		"message_id":   {strconv.FormatInt(messageID, 10)},
+		"text":         {message},
+		"reply_markup": {string(markup)},
+	}
+	return client.call(ctx, "editMessageText", values, nil)
+}
+
+func normalizeKeyboard(keyboard *InlineKeyboardMarkup) {
+	if keyboard.InlineKeyboard == nil {
+		keyboard.InlineKeyboard = make([][]InlineKeyboardButton, 0)
+	}
+}
+
+func (client *apiClient) answerCallback(ctx context.Context, callbackID, message string) error {
+	values := url.Values{"callback_query_id": {callbackID}}
+	if message != "" {
+		values.Set("text", message)
+	}
+	return client.call(ctx, "answerCallbackQuery", values, nil)
 }

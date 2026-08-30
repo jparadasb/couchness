@@ -19,8 +19,10 @@ const inviteLifetime = 10 * time.Minute
 
 // Bot exposes Couchness operations through Telegram commands.
 type Bot struct {
-	client   *apiClient
-	username string
+	client      *apiClient
+	username    string
+	sessions    map[int64]*addShowSession
+	searchShows func(string, string) (*common.OmdbResponse, error)
 }
 
 // New validates token and creates a Telegram bot.
@@ -33,7 +35,12 @@ func New(ctx context.Context, token string) (*Bot, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Bot{client: client, username: identity.Username}, nil
+	return &Bot{
+		client:      client,
+		username:    identity.Username,
+		sessions:    make(map[int64]*addShowSession),
+		searchShows: common.SearchShowInfo,
+	}, nil
 }
 
 // Username returns bot's Telegram username.
@@ -45,6 +52,9 @@ func (bot *Bot) Username() string {
 func (bot *Bot) Run(ctx context.Context) error {
 	if err := bot.client.deleteWebhook(ctx); err != nil {
 		return fmt.Errorf("could not prepare Telegram long polling: %w", err)
+	}
+	if err := bot.client.setCommands(ctx, telegramCommands()); err != nil {
+		return fmt.Errorf("could not configure Telegram command menu: %w", err)
 	}
 	var offset int64
 	for {
@@ -66,18 +76,18 @@ func (bot *Bot) Run(ctx context.Context) error {
 			if update.Message != nil {
 				bot.handleMessage(ctx, update.Message)
 			}
+			if update.CallbackQuery != nil {
+				bot.handleCallback(ctx, update.CallbackQuery)
+			}
 		}
 	}
 }
 
 func (bot *Bot) handleMessage(ctx context.Context, message *Message) {
-	if message.Chat.Type != "private" || !strings.HasPrefix(message.Text, "/") {
+	if message.Chat.Type != "private" || strings.TrimSpace(message.Text) == "" {
 		return
 	}
 
-	fields := strings.Fields(message.Text)
-	command := strings.ToLower(strings.Split(fields[0], "@")[0])
-	arguments := fields[1:]
 	configuration, err := storage.GetTelegramConfiguration()
 	if err != nil {
 		bot.reply(ctx, message.Chat.ID, "Could not load Telegram configuration: "+err.Error())
@@ -86,6 +96,15 @@ func (bot *Bot) handleMessage(ctx context.Context, message *Message) {
 	if !configuration.Enabled {
 		bot.reply(ctx, message.Chat.ID, "Telegram integration is disabled.")
 		return
+	}
+
+	isCommand := strings.HasPrefix(message.Text, "/")
+	var command string
+	var arguments []string
+	if isCommand {
+		fields := strings.Fields(message.Text)
+		command = strings.ToLower(strings.Split(fields[0], "@")[0])
+		arguments = fields[1:]
 	}
 
 	user := configuration.Users[strconv.FormatInt(message.From.ID, 10)]
@@ -97,6 +116,10 @@ func (bot *Bot) handleMessage(ctx context.Context, message *Message) {
 			}
 		}
 		bot.reply(ctx, message.Chat.ID, fmt.Sprintf("Not authorized. Your Telegram user ID is %d. Ask an owner to add you or send an invite link.", message.From.ID))
+		return
+	}
+	if !isCommand {
+		bot.handleSessionText(ctx, message, user)
 		return
 	}
 
@@ -113,6 +136,10 @@ func (bot *Bot) handleMessage(ctx context.Context, message *Message) {
 		bot.runShowAction(ctx, message.Chat.ID, user, arguments, "download")
 	case "/update_all":
 		bot.updateAll(ctx, message.Chat.ID, user)
+	case "/add_show":
+		bot.startAddShow(ctx, message, user, arguments)
+	case "/cancel":
+		bot.cancelSession(ctx, message.Chat.ID, message.From.ID)
 	case "/users":
 		bot.listUsers(ctx, message.Chat.ID, user, configuration)
 	case "/invite":
@@ -318,10 +345,26 @@ func helpText(role string) string {
 	}
 	if isAdministrator(role) {
 		commands = append(commands,
+			"/add_show <title> - add a show with guided setup",
 			"/users - list authorized users",
 			"/invite [user|viewer|admin] - create invite",
 			"/revoke <telegram_user_id> - revoke access",
 		)
 	}
 	return strings.Join(commands, "\n")
+}
+
+func telegramCommands() []BotCommand {
+	return []BotCommand{
+		{Command: "start", Description: "Show available commands"},
+		{Command: "shows", Description: "List shows in your library"},
+		{Command: "add_show", Description: "Add a show with guided setup"},
+		{Command: "update", Description: "Update one show"},
+		{Command: "download", Description: "Download latest episode"},
+		{Command: "update_all", Description: "Update all followed shows"},
+		{Command: "users", Description: "List authorized users"},
+		{Command: "invite", Description: "Invite another user"},
+		{Command: "cancel", Description: "Cancel active setup"},
+		{Command: "help", Description: "Show help"},
+	}
 }
