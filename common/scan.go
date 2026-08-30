@@ -19,6 +19,10 @@ var defaultConf = &models.ShowConf{
 
 // Scan folder for series
 func Scan(folder string, showID string, i, r bool) ([]*models.Show, error) {
+	ignoredShows, err := storage.GetIgnoredShowKeys()
+	if err != nil {
+		return nil, err
+	}
 	matches, err := doublestar.Glob(folder + "/**/*[Ss]*[Ee]*.{mov,avi,wmv,flv,3gp,mp4,mpg,mkv}")
 	if err != nil {
 		return nil, err
@@ -30,6 +34,9 @@ func Scan(folder string, showID string, i, r bool) ([]*models.Show, error) {
 		basename := filepath.Base(m)
 		extension := filepath.Ext(m)
 		sName := slug.Make(showFolder(m, folder))
+		if showID == "" && ignoredShows[sName] {
+			continue
+		}
 		if id == "" {
 			id = sName
 		}
@@ -115,7 +122,7 @@ func ScanShowDir(dir string, show *models.Show) (*models.Show, error) {
 
 		if show.ExternalID == "" {
 			title, id, externalID, err := SearchAndSelectOnImdb(show.Title, "")
-			if err != nil {
+			if err == nil {
 				show.Title = title
 				show.ID = id
 				show.ExternalID = externalID

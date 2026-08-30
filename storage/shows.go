@@ -69,3 +69,8 @@ func GetAllShows() ([]*models.Show, error) {
 
 	return shows, nil
 }
+
+// DeleteShow removes one show record without touching media files.
+func DeleteShow(showID string) error {
+	return Db.Driver.Delete(Db.Collections.Shows, showID)
+}

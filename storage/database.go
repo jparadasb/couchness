@@ -20,6 +20,7 @@ type Storage struct {
 type Collections struct {
 	Movies        string
 	Shows         string
+	IgnoredShows  string
 	Configuration string
 }
 
@@ -78,6 +79,7 @@ func New(dir string, options *scribble.Options) (*Storage, error) {
 		Collections: &Collections{
 			Movies:        "movies",
 			Shows:         "shows",
+			IgnoredShows:  "ignored-shows",
 			Configuration: "configuration",
 		},
 	}, nil

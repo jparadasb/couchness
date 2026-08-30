@@ -81,6 +81,7 @@ func (bot *Bot) startAddShow(ctx context.Context, message *Message, user *models
 			delete(bot.sessions, userID)
 		}
 	}
+	delete(bot.removals, message.From.ID)
 	bot.sessions[message.From.ID] = session
 
 	sent, err := bot.client.sendMessageWithKeyboard(ctx, message.Chat.ID, "Select the correct show:", session.resultsKeyboard())
@@ -109,9 +110,18 @@ func (bot *Bot) handleCallback(ctx context.Context, callback *CallbackQuery) {
 	}
 
 	parts := strings.Split(callback.Data, "|")
-	if len(parts) < 3 || parts[0] != "add" {
+	if len(parts) < 3 {
 		return
 	}
+	switch parts[0] {
+	case "add":
+		bot.handleAddShowCallback(ctx, callback, parts)
+	case "remove":
+		bot.handleRemoveShowCallback(ctx, callback, parts)
+	}
+}
+
+func (bot *Bot) handleAddShowCallback(ctx context.Context, callback *CallbackQuery, parts []string) {
 	session := bot.sessions[callback.From.ID]
 	if session == nil || session.ID != parts[1] || time.Now().UTC().After(session.ExpiresAt) {
 		delete(bot.sessions, callback.From.ID)
@@ -213,12 +223,18 @@ func (bot *Bot) handleSessionText(ctx context.Context, message *Message, user *m
 
 func (bot *Bot) cancelSession(ctx context.Context, chatID, userID int64) {
 	session := bot.sessions[userID]
-	if session == nil {
-		bot.reply(ctx, chatID, "No active setup.")
+	if session != nil {
+		delete(bot.sessions, userID)
+		bot.editSession(ctx, session, "Show setup cancelled.", InlineKeyboardMarkup{})
 		return
 	}
-	delete(bot.sessions, userID)
-	bot.editSession(ctx, session, "Show setup cancelled.", InlineKeyboardMarkup{})
+	removal := bot.removals[userID]
+	if removal != nil {
+		delete(bot.removals, userID)
+		bot.editRemoval(ctx, removal, "Show removal cancelled.", InlineKeyboardMarkup{})
+		return
+	}
+	bot.reply(ctx, chatID, "No active setup.")
 }
 
 func (bot *Bot) renderFollowType(ctx context.Context, session *addShowSession) {

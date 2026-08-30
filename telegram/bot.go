@@ -22,6 +22,7 @@ type Bot struct {
 	client      *apiClient
 	username    string
 	sessions    map[int64]*addShowSession
+	removals    map[int64]*removeShowSession
 	searchShows func(string, string) (*common.OmdbResponse, error)
 }
 
@@ -39,6 +40,7 @@ func New(ctx context.Context, token string) (*Bot, error) {
 		client:      client,
 		username:    identity.Username,
 		sessions:    make(map[int64]*addShowSession),
+		removals:    make(map[int64]*removeShowSession),
 		searchShows: common.SearchShowInfo,
 	}, nil
 }
@@ -138,6 +140,8 @@ func (bot *Bot) handleMessage(ctx context.Context, message *Message) {
 		bot.updateAll(ctx, message.Chat.ID, user)
 	case "/add_show":
 		bot.startAddShow(ctx, message, user, arguments)
+	case "/remove_show":
+		bot.startRemoveShow(ctx, message, user, arguments)
 	case "/cancel":
 		bot.cancelSession(ctx, message.Chat.ID, message.From.ID)
 	case "/users":
@@ -346,6 +350,7 @@ func helpText(role string) string {
 	if isAdministrator(role) {
 		commands = append(commands,
 			"/add_show <title> - add a show with guided setup",
+			"/remove_show - stop tracking a show",
 			"/users - list authorized users",
 			"/invite [user|viewer|admin] - create invite",
 			"/revoke <telegram_user_id> - revoke access",
@@ -359,6 +364,7 @@ func telegramCommands() []BotCommand {
 		{Command: "start", Description: "Show available commands"},
 		{Command: "shows", Description: "List shows in your library"},
 		{Command: "add_show", Description: "Add a show with guided setup"},
+		{Command: "remove_show", Description: "Stop tracking a show"},
 		{Command: "update", Description: "Update one show"},
 		{Command: "download", Description: "Download latest episode"},
 		{Command: "update_all", Description: "Update all followed shows"},
