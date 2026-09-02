@@ -10,6 +10,8 @@ import (
 	"github.com/highercomve/couchness/services/eztv"
 	"github.com/highercomve/couchness/services/rarbg"
 	"github.com/highercomve/couchness/services/showrss"
+	"github.com/highercomve/couchness/services/tpb"
+	"github.com/highercomve/couchness/services/yts"
 	"github.com/highercomve/couchness/storage"
 	"github.com/highercomve/couchness/utils"
 	"github.com/highercomve/couchness/utils/humanize"
@@ -20,24 +22,35 @@ var (
 	showRssService models.FollowService = showrss.New()
 	eztvService    models.FollowService = eztv.New()
 	rargbService   models.FollowService = rarbg.New()
+	ytsService     models.FollowService = yts.New()
+	tpbService     models.FollowService = tpb.New()
 )
+
+// DefaultMovieServices services used to look up movie torrents
+var DefaultMovieServices = []string{yts.ServiceType, tpb.ServiceType}
 
 // FollowServices map all types of services
 var FollowServices = map[string]models.FollowService{
 	showrss.ServiceType: showRssService,
 	eztv.ServiceType:    eztvService,
 	rarbg.ServiceType:   rargbService,
+	yts.ServiceType:     ytsService,
+	tpb.ServiceType:     tpbService,
 }
 
 // DownloadTorrent use transmission to queue the torrent
 func DownloadTorrent(magnetURL, destination string) (*transmission.Torrent, error) {
-	auth := strings.Split(storage.AppConfiguration.TransmissionAuth, ":")
+	auth := strings.SplitN(storage.AppConfiguration.TransmissionAuth, ":", 2)
+	password := ""
+	if len(auth) > 1 {
+		password = auth[1]
+	}
 	port := storage.AppConfiguration.TransmissionPort
 	host := storage.AppConfiguration.TransmissionHost
 	conf := transmission.Config{
 		Address:  fmt.Sprintf("http://%s:%s/transmission/rpc", host, port),
 		User:     auth[0],
-		Password: auth[1],
+		Password: password,
 	}
 	t, err := transmission.New(conf)
 	if err != nil {
@@ -244,21 +257,29 @@ func getShowEpisodesFromServices(show *models.Show, services []string, page, lim
 
 func getMovieVersionFromServices(movie *models.Movie, services []string, page, limit int, typeOf string) (models.Episodes, error) {
 	var episodes models.Episodes
+	var errs []string
 
-	for _, service := range services {
-		service := FollowServices[service]
+	for _, name := range services {
+		service, found := FollowServices[name]
+		if !found {
+			errs = append(errs, fmt.Sprintf("%s: unknown service", name))
+			continue
+		}
 		s, err := service.GetShowData(
-			&models.Show{ID: movie.ID, ExternalID: movie.ExternalID, Episodes: movie.Episodes},
+			&models.Show{ID: movie.ID, ExternalID: movie.ExternalID, Directory: movie.Directory},
 			page,
 			limit,
 			typeOf,
 		)
 		if err != nil {
-			fmt.Printf("error downloading from %s \n", service)
-			return nil, err
-		} else {
-			episodes = append(episodes, s.Episodes...)
+			errs = append(errs, fmt.Sprintf("%s: %s", name, err.Error()))
+			continue
 		}
+		episodes = append(episodes, s.Episodes...)
+	}
+
+	if len(episodes) == 0 && len(errs) > 0 {
+		return nil, errors.New("error searching torrents: " + strings.Join(errs, "; "))
 	}
 
 	return episodes, nil

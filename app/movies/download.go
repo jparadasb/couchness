@@ -3,12 +3,11 @@ package movies
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/gosimple/slug"
 	"github.com/highercomve/couchness/common"
 	"github.com/highercomve/couchness/models"
-	"github.com/highercomve/couchness/services/eztv"
-	"github.com/highercomve/couchness/services/rarbg"
 	"github.com/highercomve/couchness/storage"
 	"github.com/urfave/cli/v2"
 )
@@ -18,9 +17,15 @@ func Download() *cli.Command {
 	return &cli.Command{
 		Name:        "download",
 		ArgsUsage:   "",
-		Usage:       "download <movie> <folder>",
-		Description: "download a new movie",
+		Usage:       "download <movie title>",
+		Description: "search a movie on IMDb and the torrent services, then queue the selected version on transmission",
 		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "key",
+				Aliases:  []string{"k"},
+				Usage:    "movie storage key (default: slug of the title)",
+				Required: false,
+			},
 			&cli.StringFlag{
 				Name:     "title",
 				Aliases:  []string{"n"},
@@ -66,8 +71,8 @@ func Download() *cli.Command {
 			&cli.StringSliceFlag{
 				Name:        "services",
 				Aliases:     []string{"s"},
-				Usage:       "Coma separated type of services (showrss, eztv, rarbg)",
-				DefaultText: "[eztv, rarbg]",
+				Usage:       "Coma separated type of services (yts, tpb, eztv)",
+				DefaultText: "[yts, tpb]",
 				Required:    false,
 			},
 		},
@@ -82,31 +87,39 @@ func Download() *cli.Command {
 			resolution := c.String("resolution")
 
 			if title == "" {
-				title = c.Args().Get(0)
+				title = strings.Join(c.Args().Slice(), " ")
 			}
-
-			if key == "" {
-				key = slug.Make(title)
+			if title == "" && externalID == "" {
+				return cli.Exit("a movie title or --external-id is required", 1)
 			}
 
 			if len(services) == 0 {
-				services = []string{eztv.ServiceType, rarbg.ServiceType}
+				services = common.DefaultMovieServices
 			}
 
 			if folder == "" {
 				folder = storage.AppConfiguration.MoviesDir
 			}
+			if folder == "" {
+				return cli.Exit("no movies directory configured, use --folder or COUCHNESS_MOVIES_DIR", 1)
+			}
 
 			folderPath, err := filepath.Abs(folder)
 			if err != nil {
-				return cli.Exit(err.Error(), 0)
+				return cli.Exit(err.Error(), 1)
 			}
 
 			if externalID == "" {
 				title, key, externalID, err = common.SearchAndSelectOnImdb(title, "movie")
 				if err != nil {
-					return cli.Exit(err.Error(), 0)
+					return cli.Exit(err.Error(), 1)
 				}
+			}
+			if title == "" {
+				title = externalID
+			}
+			if key == "" {
+				key = slug.Make(title)
 			}
 
 			movie := &models.Movie{
@@ -126,7 +139,7 @@ func Download() *cli.Command {
 
 			_, err = common.AddMovie(movie)
 			if err != nil {
-				return cli.Exit(err.Error(), 0)
+				return cli.Exit(err.Error(), 1)
 			}
 
 			fmt.Printf("\n\r\n\r Movie schedule to download at: %s \n\r", movie.Directory)
