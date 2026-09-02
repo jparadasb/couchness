@@ -26,6 +26,11 @@ func (m *MovieStorage) Save() (*MovieStorage, error) {
 	return m, err
 }
 
+// DeleteMovie removes one movie record without touching media files.
+func DeleteMovie(movieID string) error {
+	return Db.Driver.Delete(Db.Collections.Movies, movieID)
+}
+
 // GetAllMovies get all movies
 func GetAllMovies() ([]*models.Movie, error) {
 	records, err := Db.Driver.ReadAll(Db.Collections.Movies)

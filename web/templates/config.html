@@ -1,0 +1,13 @@
+{{define "content"}}
+<h1>Configuration</h1>
+<form class="config-form" hx-post="/config" hx-target="#flash">
+  <label for="shows_dir">Shows directory</label><input id="shows_dir" name="shows_dir" value="{{.Config.ShowsDir}}">
+  <label for="shows_dirs">Extra show directories</label><textarea id="shows_dirs" name="shows_dirs" rows="3">{{join .Config.ShowsDirs "\n"}}</textarea>
+  <label for="movies_dir">Movies directory</label><input id="movies_dir" name="movies_dir" value="{{.Config.MoviesDir}}">
+  <label for="transmission_host">Transmission host</label><input id="transmission_host" name="transmission_host" value="{{.Config.TransmissionHost}}">
+  <label for="transmission_port">Transmission port</label><input id="transmission_port" name="transmission_port" value="{{.Config.TransmissionPort}}">
+  <label for="transmission_auth">Transmission auth (user:password)</label><input id="transmission_auth" name="transmission_auth" value="{{.Config.TransmissionAuth}}">
+  <label for="omdb_api_key">OMDb API key</label><input id="omdb_api_key" name="omdb_api_key" value="{{.Config.OmdbAPIKey}}">
+  <button type="submit">Save</button>
+</form>
+{{end}}

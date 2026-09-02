@@ -19,5 +19,6 @@ var Commands []*cli.Command = []*cli.Command{
 	DownloadEpisode(),
 	DisableShow(),
 	Telegram(),
+	Web(),
 	movies.Movies(),
 }

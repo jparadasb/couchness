@@ -1,0 +1,6 @@
+{{define "content"}}
+<h1>Shows</h1>
+<p class="actions"><button hx-post="/scan" hx-target="#job">Scan</button> <button hx-post="/update-all" hx-target="#job">Update all</button></p>
+<p>Scanning: {{join .Data.Dirs ", "}}</p>
+<div id="shows" hx-get="/shows" hx-trigger="job-finished from:body">{{template "shows_list" .Data}}</div>
+{{end}}

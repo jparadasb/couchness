@@ -1,0 +1,4 @@
+{{define "content"}}
+<h1>Jobs</h1>
+{{range .Data}}{{template "job" .}}{{else}}<p>No jobs yet.</p>{{end}}
+{{end}}

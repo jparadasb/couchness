@@ -112,6 +112,35 @@ For a combined Couchness and Transmission deployment, copy `deploy/telegram/couc
 docker compose --env-file couchness.env -f deploy/telegram/compose.yaml up -d --build
 ```
 
+## Movies
+
+`couchness movies download` searches YTS and The Pirate Bay (services `yts` and `tpb`) for torrents
+matching the movie's IMDb ID. RARBG shut down in 2023, so it is no longer used as a movie source.
+
+## Web UI
+
+Couchness ships a small web interface (server-rendered HTML + htmx) to scan the library, update shows,
+download the latest episode, identify shows on IMDb, and search/queue movies on transmission.
+
+```bash
+couchness web run                      # listens on :8085
+couchness web run --addr 127.0.0.1:9000 --auth admin:secret
+```
+
+`COUCHNESS_WEB_ADDR` and `COUCHNESS_WEB_AUTH` can replace the flags. Pages: `/shows`, `/movies`, `/jobs`.
+
+Install it as a systemd service (system unit needs root; `--user` installs into `~/.config/systemd/user`):
+
+```bash
+sudo couchness web install --auth admin:secret --env COUCHNESS_OMDB_API_KEY=xxx
+couchness web install --user --print   # only print the unit
+couchness web status
+couchness web uninstall
+```
+
+When run through `sudo` without `--config-dir`, the unit points at the invoking user's `~/.couchness`
+and runs as that user (`--run-as`). Use `--env-file` to keep secrets out of the unit.
+
 ### Help
 
 ```bash
@@ -121,7 +150,7 @@ USAGE:
    couchness [global options] command [command options] [arguments...]
 
 VERSION:
-   0.2.1
+   0.3.0
 
 AUTHOR:
    Sergio Marin

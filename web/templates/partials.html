@@ -1,0 +1,117 @@
+{{define "shows_list"}}
+<table>
+  <thead><tr><th>Title</th><th>IMDb</th><th>Episodes</th><th>Follow</th><th>Actions</th></tr></thead>
+  <tbody>
+    {{range .Shows}}
+    <tr>
+      <td><a href="/shows/{{.ID}}">{{.Title}}</a></td>
+      <td>{{if .ExternalID}}<a href="https://www.imdb.com/title/{{.ExternalID}}" target="_blank">{{.ExternalID}}</a>{{end}}</td>
+      <td>{{.EpisodesCount}}</td>
+      <td>{{with .Configuration}}{{.FollowType}}{{end}}</td>
+      <td><button hx-post="/shows/{{.ID}}/download" hx-target="#job">Download latest</button>
+      <button hx-post="/shows/{{.ID}}/delete" hx-target="#flash" hx-confirm="Remove {{.Title}} from tracking? Files stay on disk.">Delete</button></td>
+    </tr>
+    {{else}}
+    <tr><td colspan="5">No shows yet, run a scan.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
+
+{{define "job"}}
+<div id="job-{{.ID}}" class="job {{.Status}}"{{if not .Done}} hx-get="/jobs/{{.ID}}" hx-trigger="every 1s" hx-swap="outerHTML"{{end}} hx-on::load="var p=this.querySelector('pre'); if(p){p.scrollTop=p.scrollHeight}">
+  <strong>#{{.ID}} {{.Name}}</strong> — {{.Status}} ({{.Duration}})
+  {{if .Error}}<div class="flash error">{{.Error}}</div>{{end}}
+  <pre>{{range .Lines}}{{.}}
+{{end}}</pre>
+</div>
+{{end}}
+
+{{define "flash"}}<div class="flash {{.Kind}}">{{.Message}}</div>{{end}}
+
+{{define "identify_results"}}
+{{if .Error}}<div class="flash error">{{.Error}}</div>{{end}}
+{{range .Results}}
+<div class="result-row">
+  <strong>{{.Title}}</strong> ({{.Year}}) — {{.ImdbID}}
+  <form hx-post="/shows/{{$.Show.ID}}/identify" hx-target="#flash">
+    <input type="hidden" name="external_id" value="{{.ImdbID}}">
+    <input type="hidden" name="title" value="{{.Title}}">
+    <button type="submit">Use this</button>
+  </form>
+</div>
+{{else}}{{if .Query}}<p>No results for "{{.Query}}"</p>{{end}}{{end}}
+{{end}}
+
+{{define "movies_list"}}
+{{if .Error}}<div class="flash error">{{.Error}}</div>{{end}}
+<table>
+  <thead><tr><th>Title</th><th>IMDb</th><th>Size</th><th>Resolution</th><th>Directory</th><th>Actions</th></tr></thead>
+  <tbody>
+    {{range .Movies}}
+    <tr>
+      <td>{{.Show.Title}}</td>
+      <td>{{if .ExternalID}}<a href="https://www.imdb.com/title/{{.ExternalID}}" target="_blank">{{.ExternalID}}</a>{{end}}</td>
+      <td>{{bytes .TorrentInfo.Size}}</td>
+      <td>{{.TorrentInfo.Resolution}}</td>
+      <td>{{.Directory}}</td>
+      <td><form hx-post="/movies/delete" hx-target="#flash" hx-confirm="Remove {{.Show.Title}} from the movies list? Files stay on disk."><input type="hidden" name="key" value="{{.ID}}"><button type="submit">Delete</button></form>
+      <button hx-get="/movies/torrents" hx-target="#torrents" hx-vals='{"imdb_id":"{{.ExternalID}}","title":"{{.Show.Title}}","year":"{{.TorrentInfo.Year}}"}'>Download again</button></td>
+    </tr>
+    {{else}}
+    <tr><td colspan="6">No movies yet.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
+
+{{define "movie_results"}}
+{{if .Error}}<div class="flash error">{{.Error}}</div>{{end}}
+{{range .Results}}
+<div class="result-row">
+  <strong>{{.Title}}</strong> ({{.Year}}) — {{.ImdbID}}
+  <button hx-get="/movies/torrents" hx-target="#torrents"
+          hx-vals='{"imdb_id":"{{.ImdbID}}","title":"{{.Title}}","year":"{{.Year}}"}'>Find torrents</button>
+</div>
+{{else}}{{if .Query}}<p>No results for "{{.Query}}"</p>{{end}}{{end}}
+{{end}}
+
+{{define "movie_torrents"}}
+{{if .Error}}<div class="flash error">{{.Error}}</div>{{end}}
+{{if .Movie}}
+{{with .Movie}}<h3>Torrents for {{.Show.Title}} ({{.ExternalID}})</h3>{{end}}
+<table>
+  <thead><tr><th>Title</th><th>Size</th><th>Seeds</th><th>Resolution</th><th>Quality</th><th>Codec</th><th>Action</th></tr></thead>
+  <tbody>
+    {{range .Torrents}}
+    <tr>
+      <td>{{.Title}}</td>
+      <td>{{bytes .Size}}</td>
+      <td>{{.Seeds}}</td>
+      <td>{{.Resolution}}</td>
+      <td>{{.Quality}}</td>
+      <td>{{.Codec}}</td>
+      <td>
+        <form hx-post="/movies/download" hx-target="#flash" hx-confirm="Queue {{.Title}} in transmission?">
+          <input type="hidden" name="imdb_id" value="{{$.Movie.ExternalID}}">
+          <input type="hidden" name="title" value="{{$.Movie.Show.Title}}">
+          <input type="hidden" name="year" value="{{.Year}}">
+          <input type="hidden" name="key" value="{{$.Movie.ID}}">
+          <input type="hidden" name="torrent_title" value="{{.Title}}">
+          <input type="hidden" name="magnet" value="{{.MagnetURL}}">
+          <input type="hidden" name="size" value="{{.Size}}">
+          <input type="hidden" name="seeds" value="{{.Seeds}}">
+          <input type="hidden" name="resolution" value="{{.Resolution}}">
+          <input type="hidden" name="quality" value="{{.Quality}}">
+          <input type="hidden" name="codec" value="{{.Codec}}">
+          <button type="submit">Download</button>
+        </form>
+      </td>
+    </tr>
+    {{else}}
+    <tr><td colspan="7">No torrents found.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
+{{end}}

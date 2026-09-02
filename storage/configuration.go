@@ -29,7 +29,7 @@ func (s *Storage) GetAppConfiguration(configuration *models.AppConfiguration) (*
 			return nil, errors.New("Can load os username")
 		}
 		mediaDir := usr.HomeDir + "/couchnessMedia"
-		err = os.Mkdir(mediaDir, os.FileMode(666))
+		err = os.MkdirAll(mediaDir, 0755)
 		if err != nil {
 			return nil, errors.New("Can't create media folder: " + mediaDir)
 		}
@@ -53,6 +53,11 @@ func (s *Storage) GetAppConfiguration(configuration *models.AppConfiguration) (*
 	err = s.Driver.Write(s.Collections.Configuration, appConfID, configuration)
 
 	return configuration, err
+}
+
+// SaveAppConfiguration persist the app configuration
+func (s *Storage) SaveAppConfiguration(configuration *models.AppConfiguration) error {
+	return s.Driver.Write(s.Collections.Configuration, appConfID, configuration)
 }
 
 // applyEnvironmentOverrides applies non-empty runtime settings over persisted configuration.

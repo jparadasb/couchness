@@ -1,0 +1,8 @@
+{{define "content"}}
+<h1>Movies</h1>
+<p>Directory: {{.Data.MoviesDir}}</p>
+<input type="search" name="q" placeholder="Search a movie on IMDb" hx-get="/movies/search" hx-trigger="keyup changed delay:500ms, search" hx-target="#search-results">
+<div id="search-results"></div>
+<div id="torrents"></div>
+<div id="movies" hx-get="/movies/list" hx-trigger="movies-changed from:body">{{template "movies_list" .Data}}</div>
+{{end}}

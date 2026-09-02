@@ -1,0 +1,7 @@
+// Package static embeds the browser assets served under /static/.
+package static
+
+import "embed"
+
+//go:embed htmx.min.js
+var FS embed.FS

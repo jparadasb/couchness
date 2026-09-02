@@ -1,0 +1,60 @@
+{{define "content"}}
+{{$show := .Data.Show}}
+<h1>{{$show.Title}}</h1>
+<p>{{if $show.ExternalID}}<a href="https://www.imdb.com/title/{{$show.ExternalID}}" target="_blank">{{$show.ExternalID}}</a>{{else}}No IMDb ID{{end}} — {{$show.ID}}</p>
+<p>{{$show.Directory}}</p>
+<p>Follow type: {{with $show.Configuration}}{{.FollowType}}{{else}}—{{end}}</p>
+<p class="actions">
+  <button hx-post="/shows/{{$show.ID}}/download" hx-target="#job">Download latest</button>
+  <button hx-post="/shows/{{$show.ID}}/update" hx-target="#job">Rescan &amp; update</button>
+  <button hx-post="/shows/{{$show.ID}}/disable" hx-target="#flash" hx-confirm="Stop following this show automatically?">Set manual</button>
+  <button hx-post="/shows/{{$show.ID}}/delete" hx-target="#flash" hx-confirm="Remove {{$show.Title}} from tracking? Files stay on disk.">Delete</button>
+</p>
+<h2>Configuration</h2>
+{{$conf := $show.Configuration}}
+<form class="config-form" hx-post="/shows/{{$show.ID}}/config" hx-target="#flash">
+  <label for="follow-type">Follow type</label>
+  <select id="follow-type" name="follow_type">
+    <option value="latest" {{if $conf}}{{if eq $conf.FollowType "latest"}}selected{{end}}{{end}}>latest</option>
+    <option value="since" {{if $conf}}{{if eq $conf.FollowType "since"}}selected{{end}}{{end}}>since</option>
+    <option value="all" {{if $conf}}{{if eq $conf.FollowType "all"}}selected{{end}}{{end}}>all</option>
+    <option value="manual" {{if $conf}}{{if eq $conf.FollowType "manual"}}selected{{end}}{{end}}>manual</option>
+  </select>
+  <label for="since">Since season</label>
+  <input id="since" type="number" name="since" min="0" value="{{if $conf}}{{$conf.Since}}{{else}}0{{end}}">
+  <label for="resolution">Resolution</label>
+  <input id="resolution" type="text" name="resolution" placeholder="1080p" value="{{if $conf}}{{$conf.Resolution}}{{end}}">
+  <label for="quality">Quality</label>
+  <input id="quality" type="text" name="quality" placeholder="WEB-DL" value="{{if $conf}}{{$conf.Quality}}{{end}}">
+  <label for="codec">Codec</label>
+  <input id="codec" type="text" name="codec" placeholder="x265" value="{{if $conf}}{{$conf.Codec}}{{end}}">
+  <label>Services</label>
+  <span class="services">
+    {{$hasConf := $conf}}
+    <label><input type="checkbox" name="services" value="eztv" {{if $conf}}{{if or (in $conf.Services "eztv") (and (not $conf.Services) (eq $conf.Service "eztv"))}}checked{{end}}{{end}}> eztv</label>
+    <label><input type="checkbox" name="services" value="tpb" {{if $conf}}{{if in $conf.Services "tpb"}}checked{{end}}{{end}}> tpb</label>
+  </span>
+  <button type="submit">Save configuration</button>
+</form>
+<h2>Identify on IMDb</h2>
+<input type="search" name="q" placeholder="Search IMDb" hx-get="/shows/{{$show.ID}}/identify" hx-trigger="keyup changed delay:500ms, search" hx-target="#identify-results">
+<div id="identify-results">{{template "identify_results" .Data}}</div>
+<h2>Episodes</h2>
+<table>
+  <thead><tr><th>Episode</th><th>File</th><th>Size</th><th>Resolution</th><th>Quality</th><th>Codec</th></tr></thead>
+  <tbody>
+    {{range $show.Episodes}}
+    <tr>
+      <td>{{sen .Season .Episode}}</td>
+      <td>{{base .Location}}</td>
+      <td>{{bytes .Size}}</td>
+      <td>{{.Resolution}}</td>
+      <td>{{.Quality}}</td>
+      <td>{{.Codec}}</td>
+    </tr>
+    {{else}}
+    <tr><td colspan="6">No episodes found.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
