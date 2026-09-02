@@ -3,82 +3,132 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="/static/htmx.min.js"></script>
 <style>
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+  --bg: #0b1020;
+  --panel: #121a2b;
+  --panel-hover: #18243a;
+  --input: #0d1526;
+  --line: #263451;
+  --text: #d7e0ee;
+  --muted: #8d9ab0;
+  --heading: #f4f7fb;
+  --blue: #6ea8fe;
+  --blue-bg: #17345f;
+  --red: #ff8b86;
+  --red-bg: #3d202a;
+  --green: #72d99a;
+}
+* { box-sizing: border-box; }
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   line-height: 1.5;
   margin: 0 auto;
-  max-width: 1100px;
-  padding: 1rem;
-  background: #0d1117;
-  color: #c9d1d9;
+  max-width: 1180px;
+  min-height: 100vh;
+  padding: 1.25rem 1.5rem;
+  background: radial-gradient(circle at top right, #172442 0, var(--bg) 34rem);
+  color: var(--text);
 }
-a { color: #58a6ff; text-decoration: none; }
+a { color: var(--blue); text-decoration: none; }
 a:hover { text-decoration: underline; }
-nav { margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #30363d; }
-nav a { margin-right: 1rem; padding: 0.35rem 0.6rem; border-radius: 0.35rem; }
-nav a.active { background: #21262d; color: #f0f6fc; }
-h1, h2, h3 { color: #f0f6fc; }
-button, input[type="search"] {
-  background: #21262d;
-  border: 1px solid #30363d;
-  border-radius: 0.35rem;
-  color: #c9d1d9;
-  padding: 0.4rem 0.7rem;
+nav {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-bottom: 1.75rem;
+  padding: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: rgba(18, 26, 43, 0.85);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.16);
+}
+nav a { padding: 0.45rem 0.85rem; border-radius: 0.45rem; color: var(--muted); font-weight: 600; }
+nav a:hover { color: var(--heading); background: var(--panel-hover); text-decoration: none; }
+nav a.active { background: var(--blue-bg); color: var(--heading); }
+h1, h2, h3 { color: var(--heading); line-height: 1.2; }
+h1 { margin: 0 0 1.25rem; font-size: clamp(1.7rem, 3vw, 2.25rem); letter-spacing: -0.02em; }
+h2 { margin-top: 2rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--line); }
+h3 { margin-bottom: 0.75rem; }
+button, input[type="search"], .config-form input, .config-form select, .config-form textarea {
+  background: var(--input);
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
   font: inherit;
 }
-button { cursor: pointer; }
-button:hover { background: #30363d; }
-input[type="search"] { width: 100%; max-width: 400px; margin-bottom: 0.75rem; }
-table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
-th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #30363d; }
-th { color: #f0f6fc; }
-tr:hover td { background: #161b22; }
-.flash { padding: 0.75rem; border-radius: 0.35rem; margin: 0.75rem 0; }
-.flash.ok { background: #238636; color: #fff; }
-.flash.error { background: #da3633; color: #fff; }
-.job { background: #161b22; border: 1px solid #30363d; border-radius: 0.35rem; padding: 0.75rem; margin: 0.75rem 0; }
-.job.running { border-left: 4px solid #58a6ff; }
-.job.done { border-left: 4px solid #238636; }
-.job.failed { border-left: 4px solid #da3633; }
+button { cursor: pointer; font-weight: 600; transition: background 120ms ease, border-color 120ms ease, transform 120ms ease; }
+button:hover { background: var(--panel-hover); border-color: #45618e; }
+button:active { transform: translateY(1px); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+button[hx-get="/movies/torrents"], button[hx-post$="/download"] { background: var(--blue-bg); border-color: #315d9b; color: #dceaff; }
+button[hx-get="/movies/torrents"]:hover, button[hx-post$="/download"]:hover { background: #214a84; }
+button[hx-post$="/delete"], form[hx-post="/movies/delete"] button { color: var(--red); background: transparent; border-color: #63323c; }
+button[hx-post$="/delete"]:hover, form[hx-post="/movies/delete"] button:hover { background: var(--red-bg); }
+form { margin: 0; }
+input[type="search"] { display: block; width: min(100%, 540px); margin-bottom: 1rem; }
+main { overflow-x: auto; }
+table { width: 100%; min-width: 680px; border-collapse: separate; border-spacing: 0; margin: 1rem 0; overflow: hidden; border: 1px solid var(--line); border-radius: 0.6rem; background: rgba(18, 26, 43, 0.7); }
+th, td { text-align: left; padding: 0.7rem 0.8rem; border-bottom: 1px solid var(--line); }
+th { background: var(--panel); color: var(--heading); font-size: 0.8rem; letter-spacing: 0.05em; text-transform: uppercase; }
+th:last-child, td:last-child { white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--panel-hover); }
+.flash { padding: 0.8rem 1rem; border: 1px solid; border-radius: 0.5rem; margin: 0.75rem 0 1rem; font-weight: 600; }
+.flash.ok { background: #123523; border-color: #27784a; color: var(--green); }
+.flash.error { background: var(--red-bg); border-color: #8b3e4a; color: #ffb0aa; }
+.job { background: rgba(18, 26, 43, 0.9); border: 1px solid var(--line); border-radius: 0.6rem; padding: 1rem; margin: 0.75rem 0 1.25rem; box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.14); }
+.job.running { border-left: 4px solid var(--blue); }
+.job.done { border-left: 4px solid var(--green); }
+.job.failed { border-left: 4px solid var(--red); }
 .job pre {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 0.35rem;
+  background: #080e1b;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   max-height: 300px;
   overflow: auto;
-  padding: 0.75rem;
+  padding: 0.8rem;
   white-space: pre-wrap;
   word-break: break-word;
 }
-.actions button { margin-right: 0.5rem; margin-bottom: 0.5rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.25rem 0; }
+.actions button { margin: 0; }
+.result-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.7rem 0.85rem; margin: 0.45rem 0; border: 1px solid var(--line); border-radius: 0.5rem; background: rgba(18, 26, 43, 0.7); }
+.result-row button { flex: 0 0 auto; }
 .config-form {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.5rem 0.75rem;
+  grid-template-columns: minmax(10rem, max-content) minmax(0, 1fr);
+  gap: 0.75rem 1rem;
   align-items: center;
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 0.35rem;
-  padding: 0.75rem;
-  margin: 0.75rem 0;
-  max-width: 500px;
+  background: rgba(18, 26, 43, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  padding: 1.25rem;
+  margin: 1rem 0;
+  max-width: 720px;
+  box-shadow: 0 0.6rem 1.8rem rgba(0, 0, 0, 0.15);
 }
-.config-form label { color: #8b949e; }
-.config-form input, .config-form select {
-  background: #21262d;
-  border: 1px solid #30363d;
-  border-radius: 0.35rem;
-  color: #c9d1d9;
-  padding: 0.35rem 0.5rem;
-  font: inherit;
-  width: 100%;
-  box-sizing: border-box;
+.config-form label { color: var(--muted); font-size: 0.92rem; }
+.config-form input:not([type="checkbox"]), .config-form select, .config-form textarea { width: 100%; }
+.config-form textarea { resize: vertical; min-height: 5rem; }
+.config-form input[type="checkbox"] { width: auto; accent-color: var(--blue); }
+.config-form .services { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; }
+.config-form .services label { color: var(--text); }
+.config-form button { grid-column: 1 / -1; justify-self: start; background: var(--blue-bg); border-color: #315d9b; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; }
+@media (max-width: 700px) {
+  body { padding: 0.75rem; }
+  nav { margin-bottom: 1.25rem; }
+  nav a { flex: 1; padding-left: 0.4rem; padding-right: 0.4rem; text-align: center; }
+  .config-form { grid-template-columns: 1fr; padding: 1rem; }
+  .config-form button { grid-column: auto; }
+  .result-row { align-items: flex-start; flex-direction: column; }
 }
-.config-form .services { display: flex; gap: 1rem; }
-.config-form button { grid-column: 1 / -1; justify-self: start; }
-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #30363d; color: #8b949e; font-size: 0.875rem; }
 </style>
 </head><body>
 <nav><a href="/shows" {{if eq .Active "shows"}}class="active"{{end}}>Shows</a>
