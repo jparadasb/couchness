@@ -10,7 +10,8 @@ The first time you run any command will create a configuration file on
 The first run you can pass environment variables to set in that configuration file.
 
 ```
-COUCHNESS_MEDIA_DIR
+COUCHNESS_SHOWS_DIR
+COUCHNESS_MOVIES_DIR
 COUCHNESS_OMDB_API_KEY
 COUCHNESS_TRANSMISSION_AUTH (default: transmission:transmission)
 COUCHNESS_TRANSMISSION_HOST (default: localhost)
@@ -46,13 +47,69 @@ After this initial step all the series are going to be in follow mode "latest"
 That means will download the latest episode on the next run of `update-all`
 
 ```bash
-COUCHNESS_MEDIA_DIR=/where/your/shows/are COUCHNESS_OMDB_API_KEY=XXXXXXX couchness scan -i -r
+COUCHNESS_SHOWS_DIR=/where/your/shows/are COUCHNESS_OMDB_API_KEY=XXXXXXX couchness scan -i -r
 ```
 
 ### How to update your library
 
 ```bash
 couchness update-all
+```
+
+## Telegram integration
+
+Create a bot with [@BotFather](https://t.me/BotFather), then expose its token to Couchness. The token is never stored in the Couchness database.
+
+```bash
+export COUCHNESS_TELEGRAM_BOT_TOKEN="your-bot-token"
+couchness telegram setup --owner-id 123456789
+couchness telegram run
+```
+
+If you do not know your numeric Telegram user ID, omit `--owner-id`, run the bot, and send `/start`. The bot replies with your ID. Authorize it from another terminal:
+
+```bash
+couchness telegram users add 123456789 --role owner
+```
+
+Manage access from the CLI:
+
+```bash
+couchness telegram status
+couchness telegram test
+couchness telegram users list
+couchness telegram users add 987654321 --role user
+couchness telegram users remove 987654321
+couchness telegram disable
+```
+
+Authorized bot commands:
+
+```text
+/shows
+/show <show_id>
+/add_show <title>
+/remove_show [show_id]
+/update <show_id>
+/download <show_id>
+/update_all
+/users
+/invite [user|viewer|admin]
+/revoke <telegram_user_id>
+```
+
+Owners and admins can create single-use invite links from the bot. Invites expire after 10 minutes. Only owners can invite or revoke admins; owner accounts are managed through the CLI. The bot accepts commands only in private chats.
+
+`/add_show` provides a guided setup with OMDb search-result buttons, follow-mode and resolution choices, confirmation, and optional immediate download. Owners and admins may use it. Send `/cancel` at any time to close an active setup.
+
+`/remove_show` lets owners and admins choose a tracked show, review a clear warning, and remove only its Couchness record. Media files and Transmission torrents remain untouched, and later scans will not re-add the show. Running `/add_show` for it again removes that exclusion.
+
+`/remove_show` lets owners and admins select a tracked show and confirm removal. It deletes only the Couchness record; local media files and Transmission torrents remain untouched.
+
+For a combined Couchness and Transmission deployment, copy `deploy/telegram/couchness.env.example`, fill its values, and run:
+
+```bash
+docker compose --env-file couchness.env -f deploy/telegram/compose.yaml up -d --build
 ```
 
 ### Help

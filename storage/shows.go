@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 
 	"github.com/highercomve/couchness/models"
@@ -52,6 +53,9 @@ func SortEpisodes(episodes models.Episodes) {
 func GetAllShows() ([]*models.Show, error) {
 	records, err := Db.Driver.ReadAll(Db.Collections.Shows)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return []*models.Show{}, nil
+		}
 		return nil, err
 	}
 	shows := []*models.Show{}
@@ -64,4 +68,9 @@ func GetAllShows() ([]*models.Show, error) {
 	}
 
 	return shows, nil
+}
+
+// DeleteShow removes one show record without touching media files.
+func DeleteShow(showID string) error {
+	return Db.Driver.Delete(Db.Collections.Shows, showID)
 }

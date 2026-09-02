@@ -20,6 +20,7 @@ type Storage struct {
 type Collections struct {
 	Movies        string
 	Shows         string
+	IgnoredShows  string
 	Configuration string
 }
 
@@ -59,6 +60,9 @@ func Init(configDir string) error {
 		TransmissionHost: os.Getenv("COUCHNESS_TRANSMISSION_HOST"),
 		TransmissionPort: os.Getenv("COUCHNESS_TRANSMISSION_PORT"),
 	})
+	if err == nil {
+		applyEnvironmentOverrides(AppConfiguration)
+	}
 	return err
 }
 
@@ -75,6 +79,7 @@ func New(dir string, options *scribble.Options) (*Storage, error) {
 		Collections: &Collections{
 			Movies:        "movies",
 			Shows:         "shows",
+			IgnoredShows:  "ignored-shows",
 			Configuration: "configuration",
 		},
 	}, nil

@@ -1,0 +1,42 @@
+services:
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    container_name: couchness-transmission
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "${TZ:-America/Santiago}"
+      USER: "${COUCHNESS_TRANSMISSION_USER}"
+      PASS: "${COUCHNESS_TRANSMISSION_PASSWORD}"
+      PEERPORT: "51413"
+    volumes:
+      - "${COUCHNESS_DATA_DIR:-/opt/couchness-data}/transmission:/config"
+      - "${COUCHNESS_DATA_DIR:-/opt/couchness-data}/media:/downloads"
+    ports:
+      - "9091:9091"
+      - "51413:51413"
+      - "51413:51413/udp"
+
+  couchness-telegram:
+    build:
+      context: ../..
+      dockerfile: deploy/telegram/Dockerfile
+    image: couchness:telegram
+    container_name: couchness-telegram
+    restart: unless-stopped
+    depends_on:
+      - transmission
+    environment:
+      TZ: "${TZ:-America/Santiago}"
+      COUCHNESS_TELEGRAM_BOT_TOKEN: "${COUCHNESS_TELEGRAM_BOT_TOKEN}"
+      COUCHNESS_TELEGRAM_OWNER_ID: "${COUCHNESS_TELEGRAM_OWNER_ID}"
+      COUCHNESS_OMDB_API_KEY: "${COUCHNESS_OMDB_API_KEY:-}"
+      COUCHNESS_SHOWS_DIR: /downloads/shows/
+      COUCHNESS_MOVIES_DIR: /downloads/movies/
+      COUCHNESS_TRANSMISSION_HOST: transmission
+      COUCHNESS_TRANSMISSION_PORT: "9091"
+      COUCHNESS_TRANSMISSION_AUTH: "${COUCHNESS_TRANSMISSION_USER}:${COUCHNESS_TRANSMISSION_PASSWORD}"
+    volumes:
+      - "${COUCHNESS_DATA_DIR:-/opt/couchness-data}/couchness:/config"
+      - "${COUCHNESS_DATA_DIR:-/opt/couchness-data}/media:/downloads"

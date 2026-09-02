@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,12 +10,14 @@ import (
 	"github.com/highercomve/couchness/storage"
 )
 
-const omdbAPIURL = "http://www.omdbapi.com/"
+var omdbAPIURL = "https://www.omdbapi.com/"
 
 // OmdbResponse response from open movie database API
 type OmdbResponse struct {
 	Search       []OmdbResults
 	TotalResults string `json:"totalResults"`
+	Response     string `json:"Response"`
+	Error        string `json:"Error"`
 }
 
 // OmdbResults response from open movie database API search results
@@ -28,6 +31,9 @@ type OmdbResults struct {
 
 // SearchShowInfo Search  show information in omdb
 func SearchShowInfo(showName string, typeOf string) (*OmdbResponse, error) {
+	if storage.AppConfiguration.OmdbAPIKey == "" {
+		return nil, errors.New("COUCHNESS_OMDB_API_KEY is required")
+	}
 	if typeOf == "" {
 		typeOf = "series"
 	}
@@ -41,8 +47,11 @@ func SearchShowInfo(showName string, typeOf string) (*OmdbResponse, error) {
 	fmt.Printf("Getting Show information from IMDB... \n")
 	res, err := http.Get(url)
 	if err != nil {
-		fmt.Printf("%d", res.StatusCode)
 		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("OMDb returned HTTP %d", res.StatusCode)
 	}
 	results := &OmdbResponse{}
 	err = json.NewDecoder(res.Body).Decode(results)
@@ -51,5 +60,12 @@ func SearchShowInfo(showName string, typeOf string) (*OmdbResponse, error) {
 		return nil, err
 	}
 
-	return results, err
+	if results.Response == "False" {
+		if results.Error == "" {
+			results.Error = "no results"
+		}
+		return results, errors.New(results.Error)
+	}
+
+	return results, nil
 }

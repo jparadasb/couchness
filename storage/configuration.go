@@ -55,6 +55,39 @@ func (s *Storage) GetAppConfiguration(configuration *models.AppConfiguration) (*
 	return configuration, err
 }
 
+// applyEnvironmentOverrides applies non-empty runtime settings over persisted configuration.
+// Secrets and deployment-specific endpoints can change without rewriting the database.
+func applyEnvironmentOverrides(configuration *models.AppConfiguration) {
+	if value := os.Getenv("COUCHNESS_MOVIES_DIR"); value != "" {
+		configuration.MoviesDir = value
+	}
+	if value := os.Getenv("COUCHNESS_SHOWS_DIR"); value != "" {
+		configuration.ShowsDir = value
+		found := false
+		for _, directory := range configuration.ShowsDirs {
+			if directory == value {
+				found = true
+				break
+			}
+		}
+		if !found {
+			configuration.ShowsDirs = append(configuration.ShowsDirs, value)
+		}
+	}
+	if value := os.Getenv("COUCHNESS_OMDB_API_KEY"); value != "" {
+		configuration.OmdbAPIKey = value
+	}
+	if value := os.Getenv("COUCHNESS_TRANSMISSION_AUTH"); value != "" {
+		configuration.TransmissionAuth = value
+	}
+	if value := os.Getenv("COUCHNESS_TRANSMISSION_HOST"); value != "" {
+		configuration.TransmissionHost = value
+	}
+	if value := os.Getenv("COUCHNESS_TRANSMISSION_PORT"); value != "" {
+		configuration.TransmissionPort = value
+	}
+}
+
 // AddMediaDir add a new media directory
 func (s *Storage) AddMediaDir(directory string) error {
 	c := &models.AppConfiguration{}
