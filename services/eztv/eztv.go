@@ -118,6 +118,6 @@ func (s Service) GetShowData(show *models.Show, page, limit int, typeOf string) 
 func New() Service {
 	return Service{
 		ID:      string(ServiceType),
-		BaseURL: "https://eztv.ag/api/get-torrents",
+		BaseURL: "https://eztvx.to/api/get-torrents",
 	}
 }

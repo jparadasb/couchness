@@ -17,3 +17,6 @@ build
 # vendor/
 
 build
+
+# playwright mcp session artifacts
+.playwright-mcp/

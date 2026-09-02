@@ -1,4 +1,4 @@
-FROM golang:1.20.1-alpine3.17 as src
+FROM golang:1.27-alpine AS src
 
 ENV GO111MODULES=on
 
